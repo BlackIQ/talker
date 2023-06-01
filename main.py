@@ -2,11 +2,14 @@ import speech_recognition as sr
 from time import sleep
 import openai
 
+from config.config import env
 from tools.tts import tts
 
 r = sr.Recognizer()
 
-openai.api_key = "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"
+openai.api_key = env["OPENAI_KEY"]
+model = "gpt-3.5-turbo"
+usage = 0
 
 while True:
     with sr.Microphone() as source:
@@ -18,27 +21,37 @@ while True:
         audio = r.listen(source)
 
     try:
-        print("Proccessing . . .")
+        print("Proccessing your voice . . .")
 
         text = r.recognize_google(audio)
 
-        # if (text == "goodbye"):
-        #     bye = "Glad to talk"
+        # text = input("Prompt: ")
 
-        #     print(bye)
-        #     tts(bye)
+        if (text == "goodbye"):
+            bye = f"Glad to talk. Token usage: {usage}"
 
-        #     exit()
+            print(bye)
+            tts(bye)
 
-        # response = openai.Completion.create(
-        #     model="text-davinci-003", prompt=text)
+            exit()
 
-        # answer = response["choices"][0]["text"].replace("\n", "")
+        print("Predicting your answer . . .")
 
-        print(f"Prompt is: {text}")
-        # print(f"Your answer: {answer}")
+        response = openai.ChatCompletion.create(
+            model=model,
+            messages=[{"role": "user", "content": text}]
+        )
 
-        # tts(answer)
+        answer = response["choices"][0]["message"]["content"].replace("\n", "")
+        usages = response["usage"]
+
+        usage += usages["total_tokens"]
+
+        print(f"Prompt is: {text} - Tokens: {usages['prompt_tokens']}")
+        print(f"Your answer: {answer} - Tokens: {usages['completion_tokens']}")
+        print(f"Total usage: {usages['total_tokens']}")
+
+        tts(answer)
     except sr.UnknownValueError:
         print("Could not understand audio")
         tts("Could not understand audio")
